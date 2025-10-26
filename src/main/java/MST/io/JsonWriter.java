@@ -34,10 +34,23 @@ public class JsonWriter {
         Map<String, Object> map = new LinkedHashMap<>();
         List<Map<String, Object>> edges = new ArrayList<>();
 
-        for (Edge e : result.getMstEdges()) {
+        List<Edge> sortedEdges = new ArrayList<>(result.getMstEdges());
+        sortedEdges.sort(Comparator.comparingInt(Edge::getWeight)
+                .thenComparing(Edge::getFrom)
+                .thenComparing(Edge::getTo));
+
+        for (Edge e : sortedEdges) {
+            String from = e.getFrom();
+            String to = e.getTo();
+            if (from.compareTo(to) > 0) {
+                String tmp = from;
+                from = to;
+                to = tmp;
+            }
+
             Map<String, Object> edgeObj = new LinkedHashMap<>();
-            edgeObj.put("from", e.getFrom());
-            edgeObj.put("to", e.getTo());
+            edgeObj.put("from", from);
+            edgeObj.put("to", to);
             edgeObj.put("weight", e.getWeight());
             edges.add(edgeObj);
         }
