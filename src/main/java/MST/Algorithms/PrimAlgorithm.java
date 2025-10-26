@@ -3,6 +3,7 @@ package MST.Algorithms;
 import MST.Model.Edge;
 import MST.Model.Graph;
 import MST.Model.Output.MSTResult;
+
 import java.util.*;
 
 public class PrimAlgorithm {
@@ -12,18 +13,15 @@ public class PrimAlgorithm {
 
         List<Edge> mstEdges = new ArrayList<>();
         Set<String> visited = new HashSet<>();
+        Map<String, List<Edge>> adjacencyList = buildAdjacencyList(graph);
+
+        // Priority queue for edges by weight
         PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingInt(Edge::getWeight));
 
-        // pick any start node (first one)
+        // Start from the first node
         String startNode = graph.getNodes().getFirst();
         visited.add(startNode);
-
-        // Add all edges connected to the start node
-        for (Edge e : graph.getEdges()) {
-            if (e.getFrom().equals(startNode) || e.getTo().equals(startNode)) {
-                pq.add(e);
-            }
-        }
+        pq.addAll(adjacencyList.getOrDefault(startNode, List.of()));
 
         int operations = 0;
 
@@ -31,28 +29,23 @@ public class PrimAlgorithm {
             Edge edge = pq.poll();
             operations++;
 
-            String from = Objects.requireNonNull(edge).getFrom();
-            String to = edge.getTo();
+            String u = Objects.requireNonNull(edge).getFrom();
+            String v = edge.getTo();
 
-            boolean fromVisited = visited.contains(from);
-            boolean toVisited = visited.contains(to);
+            // pick the unvisited vertex of this edge
+            String newVertex = visited.contains(u) ? v : u;
 
-            // Skip if both vertices are already visited (would form a cycle)
-            if (fromVisited && toVisited) {
-                continue;
+            if (visited.contains(newVertex)) {
+                continue; // both already visited
             }
 
-            // Accept edge into MST
+            // accept the edge
             mstEdges.add(edge);
-
-            // Add the newly discovered vertex
-            String newVertex = fromVisited ? to : from;
             visited.add(newVertex);
 
-            // Add all edges from this new vertex that connect to unvisited nodes
-            for (Edge e : graph.getEdges()) {
-                if ((e.getFrom().equals(newVertex) && !visited.contains(e.getTo())) ||
-                        (e.getTo().equals(newVertex) && !visited.contains(e.getFrom()))) {
+            // add all outgoing edges from the new vertex
+            for (Edge e : adjacencyList.getOrDefault(newVertex, List.of())) {
+                if (!visited.contains(e.getFrom()) || !visited.contains(e.getTo())) {
                     pq.add(e);
                 }
             }
@@ -63,5 +56,14 @@ public class PrimAlgorithm {
         int totalCost = mstEdges.stream().mapToInt(Edge::getWeight).sum();
 
         return new MSTResult(mstEdges, totalCost, operations, executionTimeMs);
+    }
+
+    private Map<String, List<Edge>> buildAdjacencyList(Graph graph) {
+        Map<String, List<Edge>> adj = new HashMap<>();
+        for (Edge e : graph.getEdges()) {
+            adj.computeIfAbsent(e.getFrom(), k -> new ArrayList<>()).add(e);
+            adj.computeIfAbsent(e.getTo(), k -> new ArrayList<>()).add(e);
+        }
+        return adj;
     }
 }
