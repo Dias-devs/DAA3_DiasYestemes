@@ -3,66 +3,65 @@ package MST.Algorithms;
 import MST.Model.Edge;
 import MST.Model.Graph;
 import MST.Model.Output.MSTResult;
-import MST.Utils.Timer;
-
 import java.util.*;
 
 public class PrimAlgorithm {
 
     public MSTResult findMST(Graph graph) {
-        Timer timer = new Timer();
-        timer.start();
+        long start = System.nanoTime();
 
-        long ops = 0;
-
-        if (graph.vertexCount() == 0) {
-            return new MSTResult(Collections.emptyList(), 0, ops, timer.elapsedMillis());
-        }
-
-        Map<String, List<Edge>> adj = graph.adjacencyMap();
+        List<Edge> mstEdges = new ArrayList<>();
         Set<String> visited = new HashSet<>();
         PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingInt(Edge::getWeight));
-        List<Edge> mst = new ArrayList<>();
-        long totalCost = 0L;
 
-        // start from first node
-        String start = graph.getNodes().getFirst();
-        visited.add(start);
-        if (adj.get(start) != null) {
-            pq.addAll(adj.get(start));
-            ops += adj.get(start).size();
+        // pick any start node (first one)
+        String startNode = graph.getNodes().getFirst();
+        visited.add(startNode);
+
+        // Add all edges connected to the start node
+        for (Edge e : graph.getEdges()) {
+            if (e.getFrom().equals(startNode) || e.getTo().equals(startNode)) {
+                pq.add(e);
+            }
         }
 
-        while (!pq.isEmpty() && mst.size() < graph.vertexCount() - 1) {
-            Edge e = pq.poll();
-            ops++; // poll cost
-            String u = Objects.requireNonNull(e).getFrom();
-            String v = e.getTo();
-            String next = visited.contains(u) ? v : u;
-            if (visited.contains(next)) {
-                // both ends visited -> skip
-                ops++;
+        int operations = 0;
+
+        while (!pq.isEmpty() && mstEdges.size() < graph.vertexCount() - 1) {
+            Edge edge = pq.poll();
+            operations++;
+
+            String from = Objects.requireNonNull(edge).getFrom();
+            String to = edge.getTo();
+
+            boolean fromVisited = visited.contains(from);
+            boolean toVisited = visited.contains(to);
+
+            // Skip if both vertices are already visited (would form a cycle)
+            if (fromVisited && toVisited) {
                 continue;
             }
-            // accept edge
-            mst.add(e);
-            totalCost += e.getWeight();
-            visited.add(next);
-            ops++; // acceptance
 
-            List<Edge> edges = adj.get(next);
-            if (edges != null) {
-                for (Edge out : edges) {
-                    // add edges that lead to unvisited nodes
-                    if (!visited.contains(out.other(next))) {
-                        pq.add(out);
-                        ops++;
-                    }
+            // Accept edge into MST
+            mstEdges.add(edge);
+
+            // Add the newly discovered vertex
+            String newVertex = fromVisited ? to : from;
+            visited.add(newVertex);
+
+            // Add all edges from this new vertex that connect to unvisited nodes
+            for (Edge e : graph.getEdges()) {
+                if ((e.getFrom().equals(newVertex) && !visited.contains(e.getTo())) ||
+                        (e.getTo().equals(newVertex) && !visited.contains(e.getFrom()))) {
+                    pq.add(e);
                 }
             }
         }
 
-        double timeMs = timer.elapsedMillis();
-        return new MSTResult(mst, totalCost, ops, timeMs);
+        long end = System.nanoTime();
+        double executionTimeMs = (end - start) / 1_000_000.0;
+        int totalCost = mstEdges.stream().mapToInt(Edge::getWeight).sum();
+
+        return new MSTResult(mstEdges, totalCost, operations, executionTimeMs);
     }
 }
